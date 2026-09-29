@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>느루 - AI 스트레칭 코치</title>
+<style>
+  :root {
+    --bg: #F3F6F4;
+    --surface: #FFFFFF;
+    --ink: #22302A;
+    --muted: #5C6B63;
+    --line: #DCE5DF;
+    --accent: #2F6D52;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E3EFE8;
+    --warn-bg: #FBF3E1;
+    --warn-ink: #7A5A18;
+    --danger-bg: #FAE9E6;
+    --danger-ink: #8C3B2E;
+    --chip-bg: #EDF2EF;
+    --fig-bg: #EEF4F0;
+    --shadow: 0 1px 3px rgba(20, 35, 28, 0.07), 0 6px 20px rgba(20, 35, 28, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131B16;
+      --surface: #1B2620;
+      --ink: #E6EEE9;
+      --muted: #93A69B;
+      --line: #2A3830;
+      --accent: #63B98F;
+      --accent-ink: #0F1A14;
+      --accent-soft: #22352B;
+      --warn-bg: #332B18;
+      --warn-ink: #E0C077;
+      --danger-bg: #38221E;
+      --danger-ink: #E8998B;
+      --chip-bg: #223029;
+      --fig-bg: #16211B;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+      "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 2px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .brand .tag { font-size: 12.5px; color: var(--muted); letter-spacing: 0.02em; }
+  .top-right { display: flex; align-items: center; gap: 8px; }
+  .tier {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .tier button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 5px 13px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .tier button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  #settingsBtn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    border-radius: 999px;
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .keypanel {
+    margin-top: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+  .keypanel h2 { margin: 0 0 6px; font-size: 15px; font-weight: 750; }
+  .keypanel p { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .keypanel .row { display: flex; gap: 8px; }
+  .keypanel input {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 9px 12px;
+    font: inherit;
+    font-size: 13.5px;
+  }
+  .keypanel .btn-primary { padding: 9px 18px; }
+  .keypanel label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .keypanel .warn-note { margin-top: 8px; font-size: 12px; color: var(--warn-ink); }
+
+  main.chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 0 16px;
+  }
+
+  .intro {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 26px 24px;
+  }
+  .intro h1 {
+    margin: 0 0 8px;
+    font-size: 19px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+  }
+  .intro p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  .examples { display: flex; flex-direction: column; gap: 8px; }
+  .examples button {
+    text-align: left;
+    background: var(--chip-bg);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--ink);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .examples button:hover { border-color: var(--accent); }
+
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 86%;
+    padding: 11px 15px;
+    border-radius: 14px;
+    white-space: pre-wrap;
+    word-break: keep-all;
+  }
+  .msg.user .bubble {
+    background: var(--accent-soft);
+    border: 1px solid var(--line);
+    border-bottom-right-radius: 4px;
+  }
+  .msg.ai .bubble {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 4px;
+    box-shadow: var(--shadow);
+  }
+  .bubble.thinking { color: var(--muted); font-size: 14px; }
+  .dots::after {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    text-align: left;
+    animation: dots 1.4s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dots::after { animation: none; content: "..."; }
+  }
+
+  .quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .quick button {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .quick button:hover { background: var(--accent-soft); }
+
+  .plan-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .plan-head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .plan-head h2 { margin: 0 0 4px; font-size: 17px; font-weight: 750; letter-spacing: -0.01em; }
+  .plan-head .summary { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .plan-time {
+    flex-shrink: 0;
+    text-align: center;
+    background: var(--accent-soft);
+    border-radius: 12px;
+    padding: 8px 14px;
+  }
+  .plan-time .num {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .plan-time .unit { font-size: 11px; color: var(--muted); }
+
+  ol.plan-items { list-style: none; margin: 0; padding: 6px 0; }
+  ol.plan-items li {
+    display: flex;
+    gap: 13px;
+    padding: 13px 16px 13px 14px;
+  }
+  ol.plan-items li + li { border-top: 1px solid var(--line); }
+  .step-fig {
+    flex-shrink: 0;
+    width: 78px;
+    height: 78px;
+    border-radius: 12px;
+    background: var(--fig-bg);
+    position: relative;
+    overflow: hidden;
+  }
+  .step-fig canvas { display: block; width: 100%; height: 100%; }
+  .step-fig .no {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .step-body { flex: 1; min-width: 0; }
+  .step-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+  .step-dose { color: var(--accent); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .step-how { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+  .step-note { margin: 4px 0 0; font-size: 13px; color: var(--ink); }
+  .step-note::before { content: "코치 팁 "; font-weight: 700; color: var(--accent); font-size: 12px; }
+  .step-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
+  .meta-chip {
+    font-size: 11.5px;
+    color: var(--muted);
+    background: var(--chip-bg);
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+  .meta-chip.ai { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .video-link, .src-link {
+    font-size: 11.5px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 8px;
+    background: var(--surface);
+  }
+  .video-link:hover, .src-link:hover { background: var(--accent-soft); }
+  .video-embed {
+    margin-top: 10px;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+  }
+  .video-embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .cautions {
+    margin: 0 20px 14px;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: 13px;
+  }
+  .cautions strong { display: block; margin-bottom: 3px; font-size: 12.5px; }
+  .cautions ul { margin: 0; padding-left: 18px; }
+
+  .refs {
+    margin: 0 20px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .refs strong { font-size: 12px; display: block; }
+  .refs a { color: var(--accent); text-decoration: none; }
+  .refs a:hover { text-decoration: underline; }
+  .refs .search-src::before { content: "🔎 "; }
+
+  .plan-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 0 20px 18px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .plan-hint { color: var(--muted); font-size: 12.5px; }
+
+  .notice {
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+  }
+  .notice.danger { background: var(--danger-bg); color: var(--danger-ink); }
+
+  footer.composer {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    padding: 10px 0 18px;
+  }
+  .composer-box {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 8px 8px 8px 16px;
+  }
+  .composer-box:focus-within { border-color: var(--accent); }
+  textarea#input {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    resize: none;
+    font: inherit;
+    line-height: 1.5;
+    max-height: 120px;
+    padding: 6px 0;
+  }
+  textarea#input:focus { outline: none; }
+  textarea#input::placeholder { color: var(--muted); }
+  #sendBtn {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 11px;
+    padding: 9px 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  #sendBtn:disabled { opacity: 0.45; cursor: default; }
+  #sendBtn.stop { background: var(--danger-ink); color: #fff; }
+  .disclaimer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11.5px;
+    margin: 8px 4px 0;
+  }
+
+  /* ---- 따라하기 플레이어 ---- */
+  .player {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 50;
+    text-align: center;
+  }
+  .player.open { display: flex; }
+  .player .phase {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .player .phase.rest { color: var(--warn-ink); }
+  .player-fig {
+    width: min(190px, 42vw);
+    height: min(190px, 42vw);
+    border-radius: 20px;
+    background: var(--fig-bg);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .player-fig canvas { display: block; width: 100%; height: 100%; }
+  .player h2 { margin: 0 0 6px; font-size: 23px; font-weight: 800; letter-spacing: -0.01em; }
+  .player .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; max-width: 460px; word-break: keep-all; }
+  .player .clock {
+    font-size: 62px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .player .clock.reps { font-size: 38px; }
+  .player progress {
+    width: min(360px, 80vw);
+    height: 6px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--line);
+    margin: 12px 0 20px;
+  }
+  .player progress::-webkit-progress-bar { background: var(--line); }
+  .player progress::-webkit-progress-value { background: var(--accent); }
+  .player progress::-moz-progress-bar { background: var(--accent); }
+  .player .next { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .player .controls { display: flex; gap: 10px; }
+  .player .controls button {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 11px 22px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .player .controls button.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .player .exit {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="mark">느루</span>
+      <span class="tag">AI 스트레칭 코치</span>
+    </div>
+    <div class="top-right">
+      <div class="tier" role="group" aria-label="모델 선택">
+        <button id="tierFast" aria-pressed="false">빠름</button>
+        <button id="tierSmart" aria-pressed="true">정밀</button>
+      </div>
+      <button id="settingsBtn" aria-label="API 키 설정" title="API 키 설정">⚙</button>
+    </div>
+  </header>
+
+  <div class="keypanel" id="keyPanel" hidden>
+    <h2>Anthropic API 키 연결</h2>
+    <p>이 프로토타입은 브라우저에서 Claude API를 직접 호출합니다. 키는 서버로 전송되지 않고 이 브라우저에만 보관됩니다.
+      키는 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Anthropic Console</a>에서 발급할 수 있어요.</p>
+    <div class="row">
+      <input type="password" id="keyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+      <button class="btn-primary" id="keySave">연결</button>
+    </div>
+    <label><input type="checkbox" id="keyPersist" checked> 이 브라우저에 저장 (localStorage)</label>
+    <p class="warn-note">공용 PC에서는 저장을 끄세요. 프로토타입 용도로 본인 키만 사용하세요.</p>
+  </div>
+
+  <main class="chat" id="chat">
+    <div class="intro" id="intro">
+      <h1>지금 몸 상태를 편하게 말해주세요</h1>
+      <p>상태, 목적, 시간, 장소를 자연어로 적으면 맞춤 스트레칭 플랜을 짜드립니다. 필요하면 중간에 조건을 여쭤보고, 기본 DB에 없는 동작은 웹을 검색해 출처와 영상까지 찾아옵니다.</p>
+      <div class="examples">
+        <button data-example>하루 종일 앉아서 일했더니 목이랑 어깨가 뻐근해요. 자기 전에 침대 옆에서 10분 정도 하고 싶어요.</button>
+        <button data-example>러닝 5km 뛰고 왔는데 하체 위주로 15분 마무리 스트레칭 추천해줘.</button>
+        <button data-example>클라이밍 손가락 힘줄 회복에 좋은 스트레칭을 찾아서 추천해줘. 영상도 같이.</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="composer">
+    <div class="composer-box">
+      <textarea id="input" rows="1" placeholder="예: 허리가 뻐근한데 집에서 10분 정도 풀고 싶어요" aria-label="메시지 입력"></textarea>
+      <button id="sendBtn">보내기</button>
+    </div>
+    <p class="disclaimer">느루의 추천은 의료 조언이 아닙니다. 통증이 심하거나 저림이 있다면 전문가와 상담하세요.</p>
+  </footer>
+</div>
+
+<div class="player" id="player" role="dialog" aria-modal="true" aria-label="스트레칭 따라하기">
+  <button class="exit" id="playerExit">종료 ✕</button>
+  <div class="phase" id="playerPhase">동작 1 / 5</div>
+  <div class="player-fig"><canvas id="playerCanvas"></canvas></div>
+  <h2 id="playerName">동작 이름</h2>
+  <p class="sub" id="playerHow">동작 설명</p>
+  <div class="clock" id="playerClock">30</div>
+  <progress id="playerProg" max="100" value="0"></progress>
+  <div class="next" id="playerNext"></div>
+  <div class="controls">
+    <button id="playerPause" class="main">일시정지</button>
+    <button id="playerSkip">건너뛰기</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- 스트레칭 동작 DB ----------------
+   AI는 원칙적으로 이 DB에서 고르고, 부족할 때만 웹 검색으로 DB 외 동작을 제안한다. */
+const DB = [
+  { id: "neck-side", name: "목 옆 스트레칭 (상부승모근)", area: ["목", "어깨"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "한 손으로 머리를 반대쪽으로 지그시 당겨 목 옆을 늘립니다. 반대쪽 어깨는 아래로 내려 고정하세요." },
+  { id: "neck-flex", name: "목 앞뒤 스트레칭", area: ["목"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: false, dur: 20, sets: 2, how: "턱을 가슴 쪽으로 천천히 당겨 뒷목을 늘리고, 이어서 시선을 천장으로 올려 목 앞을 늘립니다." },
+  { id: "chin-tuck", name: "턱 당기기 (친턱)", area: ["목"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "동적", side: false, reps: 10, sets: 2, how: "정수리가 위로 길어진다는 느낌으로 턱을 수평으로 뒤로 당겼다가 풉니다. 거북목 교정의 기본 동작입니다." },
+  { id: "levator", name: "견갑거근 스트레칭", area: ["목", "어깨"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "코를 겨드랑이 쪽으로 향하게 고개를 45도 돌려 숙이고, 같은 방향 손으로 뒤통수를 지그시 눌러줍니다." },
+  { id: "shoulder-roll", name: "어깨 돌리기", area: ["어깨"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "동적", side: false, reps: 10, sets: 2, how: "어깨를 크게 원을 그리며 뒤로 돌립니다. 견갑골이 움직이는 것을 느끼면서 천천히." },
+  { id: "cross-shoulder", name: "크로스바디 어깨 스트레칭", area: ["어깨"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "한 팔을 가슴 앞으로 가로질러 뻗고 반대 팔로 감싸 몸쪽으로 당깁니다. 어깨 뒤쪽이 늘어납니다." },
+  { id: "triceps", name: "삼두 스트레칭", area: ["어깨", "팔"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "한 팔을 머리 위로 들어 팔꿈치를 굽히고, 반대 손으로 팔꿈치를 지그시 눌러 팔 뒤쪽을 늘립니다." },
+  { id: "doorway-pec", name: "문틀 가슴 스트레칭", area: ["가슴", "어깨"], pos: "서서", eq: "문틀/벽", lvl: 1, kind: "정적", side: false, dur: 30, sets: 3, how: "문틀에 팔꿈치를 90도로 대고 몸을 앞으로 기울여 가슴을 엽니다. 라운드숄더에 특히 좋습니다." },
+  { id: "wall-angel", name: "벽 천사", area: ["어깨", "등"], pos: "서서", eq: "벽", lvl: 2, kind: "동적", side: false, reps: 10, sets: 2, how: "등과 팔을 벽에 붙이고 팔을 W자에서 Y자로 천천히 올렸다 내립니다. 허리가 벽에서 뜨지 않게 하세요." },
+  { id: "towel-shoulder", name: "수건 어깨 스트레칭", area: ["어깨"], pos: "서서", eq: "수건", lvl: 2, kind: "정적", side: true, dur: 30, sets: 2, how: "등 뒤에서 수건을 위아래로 잡고, 위쪽 손으로 천천히 끌어올려 아래쪽 어깨 내회전을 늘립니다." },
+  { id: "scap-squeeze", name: "견갑골 모으기", area: ["등", "어깨"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "동적", side: false, reps: 12, sets: 2, how: "가슴을 펴고 양쪽 견갑골을 등 가운데로 5초간 모았다가 풉니다. 어깨가 귀 쪽으로 솟지 않게." },
+  { id: "cat-cow", name: "고양이-소 자세", area: ["등", "허리"], pos: "바닥(네발기기)", eq: null, lvl: 1, kind: "동적", side: false, reps: 10, sets: 2, how: "네발기기 자세에서 숨을 내쉬며 등을 둥글게 말고, 마시며 배를 내리고 가슴을 엽니다. 척추 전체를 부드럽게." },
+  { id: "child-pose", name: "아기 자세", area: ["등", "허리"], pos: "바닥", eq: null, lvl: 1, kind: "이완", side: false, dur: 45, sets: 2, how: "무릎을 꿇고 엉덩이를 뒤꿈치에 붙인 채 팔을 앞으로 뻗어 상체를 바닥에 내려놓습니다. 깊게 호흡하세요.", warn: "무릎이 불편하면 무릎 사이를 넓히거나 생략하세요." },
+  { id: "open-book", name: "흉추 회전 (오픈북)", area: ["등"], pos: "바닥(옆으로 누워)", eq: null, lvl: 1, kind: "동적", side: true, reps: 8, sets: 2, how: "옆으로 누워 무릎을 90도로 굽히고, 위쪽 팔을 책을 펼치듯 반대쪽으로 열며 시선이 따라갑니다." },
+  { id: "seated-twist", name: "앉아서 척추 비틀기", area: ["등", "허리"], pos: "앉아서", eq: "의자(선택)", lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "앉은 자세에서 상체를 한쪽으로 천천히 돌리고 의자 등받이나 무릎을 잡아 유지합니다. 허리가 아닌 등 가운데가 돌아가는 느낌으로." },
+  { id: "forward-fold", name: "서서 상체 숙이기", area: ["허리", "햄스트링"], pos: "서서", eq: null, lvl: 1, kind: "정적", side: false, dur: 30, sets: 2, how: "무릎을 살짝 굽힌 채 상체 힘을 빼고 천천히 숙여 손을 바닥 쪽으로 늘어뜨립니다.", warn: "허리 디스크 이력이 있으면 생략하고 다른 동작으로 대체하세요." },
+  { id: "foam-tspine", name: "폼롤러 흉추 릴리즈", area: ["등"], pos: "바닥", eq: "폼롤러", lvl: 2, kind: "릴리즈", side: false, dur: 60, sets: 2, how: "폼롤러를 날개뼈 아래에 두고 누워 천천히 위아래로 굴립니다. 목은 손으로 받쳐주세요." },
+  { id: "knee-chest", name: "무릎 가슴 당기기", area: ["허리", "엉덩이"], pos: "바닥(누워서)", eq: null, lvl: 1, kind: "정적", side: false, dur: 30, sets: 3, how: "누워서 양 무릎을 가슴 쪽으로 감싸 안고 허리 아래쪽이 부드럽게 늘어나는 것을 느낍니다." },
+  { id: "supine-twist", name: "누워서 허리 비틀기", area: ["허리", "엉덩이"], pos: "바닥(누워서)", eq: null, lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "누워서 한쪽 무릎을 반대편 바닥으로 넘기고 어깨는 바닥에 붙인 채 유지합니다." },
+  { id: "pelvic-tilt", name: "골반 기울이기", area: ["허리"], pos: "바닥(누워서)", eq: null, lvl: 1, kind: "동적", side: false, reps: 12, sets: 2, how: "무릎을 세우고 누워 허리로 바닥을 지그시 눌렀다가 풉니다. 골반이 앞뒤로 구르는 느낌으로." },
+  { id: "prone-press", name: "엎드려 상체 들기 (신전)", area: ["허리"], pos: "바닥(엎드려서)", eq: null, lvl: 2, kind: "동적", side: false, reps: 10, sets: 2, how: "엎드린 자세에서 손으로 바닥을 밀어 상체만 천천히 들어올립니다. 골반은 바닥에 붙인 채로.", warn: "동작 중 다리 저림이 생기면 즉시 중단하세요. 척추관협착증이 있으면 피하세요." },
+  { id: "bird-dog", name: "버드독", area: ["허리", "코어"], pos: "바닥(네발기기)", eq: null, lvl: 2, kind: "동적", side: true, reps: 8, sets: 2, how: "네발기기에서 반대쪽 팔과 다리를 동시에 뻗어 3초 유지합니다. 허리가 흔들리지 않게 코어에 힘을 유지하세요." },
+  { id: "pigeon", name: "비둘기 자세", area: ["엉덩이", "고관절"], pos: "바닥", eq: null, lvl: 3, kind: "정적", side: true, dur: 45, sets: 2, how: "한쪽 정강이를 몸 앞에 가로로 두고 반대 다리를 뒤로 뻗은 뒤 상체를 앞으로 숙입니다.", warn: "무릎에 통증이 있으면 누워서 4자 스트레칭으로 대체하세요." },
+  { id: "figure4-supine", name: "누워서 4자 스트레칭", area: ["엉덩이"], pos: "바닥(누워서)", eq: null, lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "누워서 한쪽 발목을 반대 무릎 위에 올려 4자를 만들고, 아래 다리 허벅지를 감싸 당깁니다." },
+  { id: "figure4-seated", name: "의자 4자 스트레칭", area: ["엉덩이"], pos: "앉아서", eq: "의자", lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "의자에 앉아 한쪽 발목을 반대 무릎에 올리고 허리를 편 채 상체를 앞으로 기울입니다. 사무실에서 하기 좋습니다." },
+  { id: "hip-flexor-lunge", name: "런지 고관절 스트레칭", area: ["고관절", "허벅지앞"], pos: "바닥/서서", eq: null, lvl: 2, kind: "정적", side: true, dur: 30, sets: 2, how: "한쪽 무릎을 바닥에 대고 런지 자세에서 골반을 앞으로 밀어 뒷다리 고관절 앞쪽을 늘립니다. 엉덩이에 살짝 힘을 주면 더 잘 늘어납니다." },
+  { id: "butterfly", name: "나비 자세", area: ["고관절", "내전근"], pos: "바닥(앉아서)", eq: null, lvl: 1, kind: "정적", side: false, dur: 45, sets: 2, how: "앉아서 발바닥을 마주 붙이고 무릎을 바닥 쪽으로 내리며 허리를 편 채 유지합니다." },
+  { id: "foam-glute", name: "폼롤러 둔근 릴리즈", area: ["엉덩이"], pos: "바닥", eq: "폼롤러", lvl: 2, kind: "릴리즈", side: true, dur: 45, sets: 1, how: "폼롤러 위에 한쪽 엉덩이를 올리고 같은 쪽 발목을 반대 무릎에 얹은 채 천천히 굴립니다." },
+  { id: "hamstring-stand", name: "서서 햄스트링 스트레칭", area: ["햄스트링"], pos: "서서", eq: "의자/낮은 단(선택)", lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "한쪽 다리를 앞으로 뻗어 뒤꿈치를 바닥이나 낮은 단에 대고, 허리를 편 채 상체를 기울입니다." },
+  { id: "hamstring-towel", name: "누워서 수건 햄스트링 스트레칭", area: ["햄스트링"], pos: "바닥(누워서)", eq: "수건/밴드", lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "누워서 발바닥에 수건을 걸고 다리를 편 채 몸 쪽으로 당깁니다. 무릎은 살짝 굽어도 됩니다." },
+  { id: "quad-stand", name: "서서 허벅지 앞 스트레칭", area: ["허벅지앞"], pos: "서서", eq: "벽(선택)", lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "한 손으로 벽을 짚고 반대 손으로 발등을 잡아 뒤꿈치를 엉덩이로 당깁니다. 무릎은 모은 채로." },
+  { id: "calf-wall", name: "벽 종아리 스트레칭", area: ["종아리"], pos: "서서", eq: "벽", lvl: 1, kind: "정적", side: true, dur: 30, sets: 2, how: "벽을 밀듯 손을 대고 한 다리를 뒤로 뻗어 뒤꿈치를 바닥에 붙인 채 체중을 앞으로 싣습니다." },
+  { id: "legs-up-wall", name: "다리 벽에 올리기", area: ["하체", "이완"], pos: "바닥(누워서)", eq: "벽", lvl: 1, kind: "이완", side: false, dur: 120, sets: 1, how: "엉덩이를 벽에 붙이고 누워 다리를 벽에 기대 올립니다. 하체 부기와 피로 회복에 좋습니다. 편하게 호흡하세요." },
+  { id: "foam-calf", name: "폼롤러 종아리 릴리즈", area: ["종아리"], pos: "바닥", eq: "폼롤러", lvl: 2, kind: "릴리즈", side: true, dur: 45, sets: 1, how: "종아리 아래에 폼롤러를 두고 천천히 굴립니다. 아픈 지점에서 5초씩 머물러도 좋습니다." },
+  { id: "wrist-flex", name: "손목 굽힘/폄 스트레칭", area: ["손목"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: true, dur: 20, sets: 2, how: "팔을 앞으로 뻗고 손끝을 아래로, 그다음 위로 향하게 해 반대 손으로 지그시 당깁니다. 키보드 작업이 많은 날 필수." },
+  { id: "prayer-stretch", name: "기도 스트레칭", area: ["손목", "팔"], pos: "앉아서/서서", eq: null, lvl: 1, kind: "정적", side: false, dur: 30, sets: 2, how: "가슴 앞에서 손바닥을 마주 붙이고 팔꿈치를 들어올리며 손을 아래로 내려 손목 안쪽을 늘립니다." },
+  { id: "side-bend", name: "서서 옆구리 스트레칭", area: ["옆구리", "전신"], pos: "서서", eq: null, lvl: 1, kind: "정적", side: true, dur: 25, sets: 2, how: "한 팔을 머리 위로 뻗고 몸을 반대쪽으로 크게 기울입니다. 골반은 제자리에 고정하세요." },
+  { id: "worlds-greatest", name: "월드 그레이티스트 스트레치", area: ["전신", "고관절", "등"], pos: "바닥/서서", eq: null, lvl: 3, kind: "동적", side: true, reps: 5, sets: 2, how: "깊은 런지에서 한 손을 바닥에 대고 반대 팔을 하늘로 열어 흉추를 회전합니다. 전신을 한 번에 깨우는 동작입니다." },
+  { id: "leg-swing", name: "다리 스윙", area: ["고관절", "햄스트링"], pos: "서서", eq: "벽(선택)", lvl: 1, kind: "동적", side: true, reps: 10, sets: 2, how: "벽이나 의자를 잡고 한 다리를 앞뒤로 부드럽게 흔듭니다. 운동 전 워밍업으로 좋습니다." },
+];
+
+/* ---------------- 스틱 피겨 애니메이션 ---------------- */
+const FIG = { torso: 24, neck: 5, headR: 6.5, ua: 13, fa: 11, th: 15, sh: 14, ground: 104 };
+
+const BASES = {
+  stand: { root: [46, 75], torso: 90, head: 0, armR: [-75, -82], armL: [-105, -98], legR: [-86, -90], legL: [-94, -90] },
+  sit: { root: [40, 90], torso: 90, head: 0, armR: [-50, -10], armL: [-70, -30], legR: [-2, -88], legL: [6, -92] },
+  supine: { root: [58, 98], torso: 180, head: 0, armR: [-8, -5], armL: [-12, -10], legR: [2, -6], legL: [-2, -8] },
+  prone: { root: [44, 98], torso: 0, head: 10, armR: [-140, 5], armL: [-145, 0], legR: [184, 182], legL: [181, 179] },
+  quad: { root: [40, 83], torso: 8, head: -10, armR: [-88, -90], armL: [-96, -92], legR: [-95, 178], legL: [-88, 174] },
+};
+
+const POSES = {
+  "neck-side": { base: "stand", A: { head: -5 }, B: { head: -38, armR: [95, 175] }, period: 3 },
+  "neck-flex": { base: "stand", A: { head: -45 }, B: { head: 35 }, period: 3 },
+  "chin-tuck": { base: "stand", A: { head: 18 }, B: { head: -18 }, period: 2 },
+  "levator": { base: "stand", A: { head: -15 }, B: { head: -55, armR: [100, 190] }, period: 3 },
+  "shoulder-roll": { base: "stand", A: { armR: [-50, -15], armL: [-130, -165] }, B: { armR: [-120, -160], armL: [-60, -20] }, period: 1.6 },
+  "cross-shoulder": { base: "stand", A: { armR: [165, 168], armL: [-45, 60] }, B: { armR: [172, 175], armL: [-40, 70] }, period: 3 },
+  "triceps": { base: "stand", A: { armR: [95, -45], armL: [115, 45] }, B: { armR: [102, -55], armL: [120, 40] }, period: 3 },
+  "doorway-pec": { base: "stand", A: { root: [40, 75], torso: 87, armR: [12, 8], armL: [16, 12] }, B: { root: [40, 75], torso: 76, armR: [18, 14], armL: [22, 18] }, period: 3, props: { wall: 66 } },
+  "wall-angel": { base: "stand", A: { root: [38, 75], torso: 92, armR: [-45, 80], armL: [-50, 85] }, B: { root: [38, 75], torso: 92, armR: [95, 92], armL: [100, 96] }, period: 2.2, props: { wall: 30 } },
+  "towel-shoulder": { base: "stand", A: { armR: [100, -70], armL: [-115, 95] }, B: { armR: [106, -62], armL: [-110, 100] }, period: 3, towel: "hands" },
+  "scap-squeeze": { base: "stand", A: { torso: 88, armR: [-25, 25], armL: [-155, 155] }, B: { torso: 94, armR: [-45, 15], armL: [-135, 165] }, period: 2.2 },
+  "cat-cow": { base: "quad", A: { torso: 14, head: -55, root: [40, 81] }, B: { torso: -2, head: 35, root: [40, 85] }, period: 2.6 },
+  "child-pose": { base: "stand", A: { root: [34, 92], torso: -12, head: 6, armR: [-8, 3], armL: [-14, -3], legR: [-53, 178], legL: [-47, 174] }, B: { root: [34, 93], torso: -16, head: 4, armR: [-6, 5], armL: [-12, -1], legR: [-53, 178], legL: [-47, 174] }, period: 3.4 },
+  "open-book": { base: "supine", A: { legR: [55, -55], legL: [50, -60], armL: [175, 178], armR: [85, 88] }, B: { legR: [55, -55], legL: [50, -60], armL: [175, 178], armR: [168, 170] }, period: 2.6 },
+  "seated-twist": { base: "sit", A: { armR: [-30, -5], head: 5 }, B: { armR: [-165, -150], head: 25 }, period: 3, props: { chair: true } },
+  "forward-fold": { base: "stand", A: { torso: 80, head: -10, armR: [-70, -80], armL: [-95, -90] }, B: { torso: -52, head: -15, armR: [-92, -90], armL: [-96, -95], legR: [-84, -92], legL: [-92, -90] }, period: 3.2 },
+  "foam-tspine": { base: "supine", A: { root: [58, 99], torso: 165, armR: [130, -140], armL: [135, -145], legR: [65, -75], legL: [60, -78] }, B: { root: [62, 99], torso: 172, armR: [130, -140], armL: [135, -145], legR: [70, -80], legL: [65, -82] }, period: 2.4, props: { roller: [34, 97, 5.5] } },
+  "knee-chest": { base: "supine", A: { legR: [15, 5], legL: [10, 0] }, B: { legR: [115, -135], legL: [108, -142], armR: [55, 10], armL: [50, 5] }, period: 3 },
+  "supine-twist": { base: "supine", A: { legR: [75, -75], legL: [70, -80], armR: [70, 75], armL: [178, 175] }, B: { legR: [100, -115], legL: [95, -120], armR: [120, 130], armL: [178, 175] }, period: 3.2 },
+  "pelvic-tilt": { base: "supine", A: { root: [58, 98], torso: 180, legR: [60, -72], legL: [55, -76] }, B: { root: [58, 96], torso: 184, legR: [64, -76], legL: [59, -80] }, period: 2 },
+  "prone-press": { base: "prone", A: { torso: 6, head: 8, armR: [-140, 5], armL: [-145, 0] }, B: { torso: 26, head: 20, armR: [-50, -35], armL: [-55, -40] }, period: 2.6 },
+  "bird-dog": { base: "quad", A: {}, B: { armR: [8, 5], legL: [172, 178] }, period: 2.6 },
+  "pigeon": { base: "stand", A: { root: [42, 96], torso: 78, head: 0, armR: [-70, -70], armL: [-85, -80], legR: [-25, 175], legL: [188, 183] }, B: { root: [42, 96], torso: 34, head: -10, armR: [-35, -25], armL: [-45, -35], legR: [-25, 175], legL: [188, 183] }, period: 3.4 },
+  "figure4-supine": { base: "supine", A: { legL: [65, -70], legR: [100, -10], armR: [45, 85] }, B: { legL: [75, -80], legR: [105, -15], armR: [55, 95] }, period: 3 },
+  "figure4-seated": { base: "sit", A: { torso: 88, legR: [0, -88], legL: [25, -15], armR: [-40, -20] }, B: { torso: 62, legR: [0, -88], legL: [25, -15], armR: [-60, -45] }, period: 3.2, props: { chair: true } },
+  "hip-flexor-lunge": { base: "stand", A: { root: [44, 88], torso: 90, armR: [-45, -25], armL: [-60, -40], legR: [-15, -75], legL: [-125, 172] }, B: { root: [44, 88], torso: 94, armR: [-45, -25], armL: [-60, -40], legR: [-25, -75], legL: [-118, 172] }, period: 3 },
+  "butterfly": { base: "stand", A: { root: [46, 97], torso: 84, head: 0, armR: [-55, -30], armL: [-65, -40], legR: [-18, 166], legL: [-28, 158] }, B: { root: [46, 97], torso: 84, head: 0, armR: [-55, -30], armL: [-65, -40], legR: [-32, 171], legL: [-40, 165] }, period: 2.2 },
+  "foam-glute": { base: "stand", A: { root: [44, 92], torso: 80, head: 0, armR: [-135, -75], armL: [-140, -80], legR: [15, -75], legL: [8, -70] }, B: { root: [49, 92], torso: 80, head: 0, armR: [-140, -80], armL: [-145, -85], legR: [20, -80], legL: [13, -75] }, period: 2, props: { roller: [44, 98, 5.5] } },
+  "hamstring-stand": { base: "stand", A: { root: [46, 76], torso: 85, armR: [-60, -50], armL: [-75, -60], legR: [-28, -28], legL: [-80, -88] }, B: { root: [46, 76], torso: 50, head: -10, armR: [-15, -30], armL: [-30, -40], legR: [-28, -28], legL: [-80, -88] }, period: 3.2, props: { step: [64, 90, 16, 14] } },
+  "hamstring-towel": { base: "supine", A: { legL: [-4, -2], legR: [80, 78], armR: [55, 70], armL: [50, 65] }, B: { legL: [-4, -2], legR: [96, 94], armR: [65, 80], armL: [60, 75] }, period: 3, towel: "legR" },
+  "quad-stand": { base: "stand", A: { armR: [10, 5], armL: [-130, -105], legL: [-105, 115] }, B: { armR: [10, 5], armL: [-135, -110], legL: [-112, 120] }, period: 3, props: { wall: 74 } },
+  "calf-wall": { base: "stand", A: { root: [40, 76], torso: 76, armR: [5, -8], armL: [8, -5], legR: [-55, -85], legL: [-115, -105] }, B: { root: [43, 76], torso: 68, armR: [8, -5], armL: [11, -2], legR: [-60, -85], legL: [-112, -103] }, period: 3, props: { wall: 72 } },
+  "legs-up-wall": { base: "supine", A: { root: [62, 98], legR: [80, 84], legL: [78, 82], armR: [-10, -6], armL: [175, 178] }, B: { root: [62, 98], legR: [84, 88], legL: [82, 86], armR: [-10, -6], armL: [175, 178] }, period: 3.6, props: { wall: 68 } },
+  "foam-calf": { base: "stand", A: { root: [36, 94], torso: 82, head: 0, armR: [-140, -85], armL: [-145, -90], legR: [-12, -4], legL: [-16, -8] }, B: { root: [41, 94], torso: 82, head: 0, armR: [-145, -90], armL: [-150, -95], legR: [-12, -4], legL: [-16, -8] }, period: 2, props: { roller: [58, 101, 4.5] } },
+  "wrist-flex": { base: "stand", A: { armR: [5, 0], armL: [-25, 25] }, B: { armR: [5, -30], armL: [-20, 12] }, period: 2.4 },
+  "prayer-stretch": { base: "stand", A: { armR: [-50, 60], armL: [-55, 65] }, B: { armR: [-35, 50], armL: [-40, 55] }, period: 2.6 },
+  "side-bend": { base: "stand", A: { torso: 90, armR: [100, 105] }, B: { torso: 104, head: 8, armR: [120, 128] }, period: 3 },
+  "worlds-greatest": { base: "stand", A: { root: [44, 86], torso: 42, head: 0, armR: [-60, -70], armL: [-80, -85], legR: [-15, -78], legL: [195, 190] }, B: { root: [44, 86], torso: 42, head: 10, armR: [95, 100], armL: [-80, -85], legR: [-15, -78], legL: [195, 190] }, period: 2.4 },
+  "leg-swing": { base: "stand", A: { armL: [170, 175], legR: [-40, -50] }, B: { armL: [170, 175], legR: [-140, -130] }, period: 1.4, props: { wall: 24 } },
+  "_custom": { base: "stand", A: { torso: 90 }, B: { torso: 95, armR: [-65, -70], armL: [-115, -108] }, period: 3 },
+};
+
+const rad = (d) => d * Math.PI / 180;
+const pt = (p, len, ang) => [p[0] + len * Math.cos(rad(ang)), p[1] - len * Math.sin(rad(ang))];
+const lerp = (a, b, t) => a + (b - a) * t;
+const lerpV = (a, b, t) => Array.isArray(a) ? a.map((v, i) => lerp(v, b[i], t)) : lerp(a, b, t);
+
+function mixPose(spec, t) {
+  const base = BASES[spec.base];
+  const A = { ...base, ...spec.A };
+  const B = { ...base, ...spec.B };
+  const p = {};
+  for (const k of ["root", "torso", "head", "armR", "armL", "legR", "legL"]) {
+    p[k] = lerpV(A[k], B[k], t);
+  }
+  return p;
+}
+
+let PAL = null;
+function refreshPalette() {
+  const cs = getComputedStyle(document.documentElement);
+  PAL = {
+    ink: cs.getPropertyValue("--ink").trim(),
+    muted: cs.getPropertyValue("--muted").trim(),
+    accent: cs.getPropertyValue("--accent").trim(),
+    line: cs.getPropertyValue("--line").trim(),
+  };
+}
+
+function drawFigure(ctx, spec, t) {
+  const p = mixPose(spec, t);
+  ctx.clearRect(0, 0, 120, 120);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.strokeStyle = PAL.line;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(8, FIG.ground);
+  ctx.lineTo(112, FIG.ground);
+  ctx.stroke();
+
+  const props = spec.props || {};
+  if (props.wall != null) {
+    ctx.beginPath();
+    ctx.moveTo(props.wall, 18);
+    ctx.lineTo(props.wall, FIG.ground);
+    ctx.stroke();
+  }
+  if (props.chair) {
+    ctx.beginPath();
+    ctx.moveTo(28, 90); ctx.lineTo(50, 90);
+    ctx.moveTo(30, 90); ctx.lineTo(30, FIG.ground);
+    ctx.moveTo(48, 90); ctx.lineTo(48, FIG.ground);
+    ctx.moveTo(28, 90); ctx.lineTo(28, 62);
+    ctx.stroke();
+  }
+  if (props.roller) {
+    ctx.beginPath();
+    ctx.arc(props.roller[0], props.roller[1], props.roller[2], 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (props.step) {
+    ctx.strokeRect(props.step[0], props.step[1], props.step[2], props.step[3]);
+  }
+
+  const hip = p.root;
+  const shoulder = pt(hip, FIG.torso, p.torso);
+  const headC = pt(shoulder, FIG.neck + FIG.headR, p.torso + p.head);
+  const limb = (from, lens, angs) => {
+    const mid = pt(from, lens[0], angs[0]);
+    return [from, mid, pt(mid, lens[1], angs[1])];
+  };
+  const armR = limb(shoulder, [FIG.ua, FIG.fa], p.armR);
+  const armL = limb(shoulder, [FIG.ua, FIG.fa], p.armL);
+  const legR = limb(hip, [FIG.th, FIG.sh], p.legR);
+  const legL = limb(hip, [FIG.th, FIG.sh], p.legL);
+
+  const stroke = (pts, color, w) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  };
+
+  ctx.globalAlpha = 0.45;
+  stroke(armL, PAL.muted, 4);
+  stroke(legL, PAL.muted, 4);
+  ctx.globalAlpha = 1;
+
+  stroke([hip, shoulder], PAL.ink, 4.5);
+  stroke(legR, PAL.ink, 4.5);
+  stroke(armR, PAL.accent, 4.5);
+
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.arc(headC[0], headC[1], FIG.headR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  if (spec.towel === "hands") {
+    stroke([armR[2], armL[2]], PAL.accent, 2);
+  } else if (spec.towel === "legR") {
+    stroke([armR[2], legR[2]], PAL.accent, 2);
+  }
+}
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const animRegistry = new Map();
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    const rec = animRegistry.get(en.target);
+    if (rec) rec.visible = en.isIntersecting;
+  });
+});
+
+function attachAnim(canvas, exId) {
+  const spec = POSES[exId] || POSES._custom;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = 120 * dpr;
+  canvas.height = 120 * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  animRegistry.set(canvas, { spec, ctx, visible: true });
+  io.observe(canvas);
+}
+
+(function animLoop() {
+  function frame(now) {
+    refreshPalette();
+    animRegistry.forEach((rec, canvas) => {
+      if (!rec.visible || !canvas.isConnected) return;
+      const period = (rec.spec.period || 3) * 1000;
+      const t = REDUCED ? 0.5
+        : 0.5 - 0.5 * Math.cos(2 * Math.PI * ((now % period) / period));
+      drawFigure(rec.ctx, rec.spec, t);
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---------------- AI (Claude API 직접 호출, BYOK) ---------------- */
+const DB_FOR_PROMPT = JSON.stringify(DB.map(e => ({
+  id: e.id, name: e.name, area: e.area, pos: e.pos, eq: e.eq, lvl: e.lvl,
+  kind: e.kind, side: e.side, dur: e.dur ?? null, reps: e.reps ?? null,
+  sets: e.sets, warn: e.warn ?? null,
+})));
+
+const SYSTEM_PROMPT = `너는 "느루"라는 스트레칭 코치 AI다. 사용자의 자연어 입력(몸 상태, 목적, 가용 시간, 장소/환경)을 바탕으로 아래 동작 DB에서 골라 맞춤 스트레칭 플랜을 만든다.
+
+[동작 DB]
+${DB_FOR_PROMPT}
+(dur: 1세트당 유지 시간(초). side가 true면 좌우 각각 수행하므로 실제 시간은 2배. reps: 반복 횟수. lvl: 1 초급, 2 중급, 3 상급.)
+
+[응답 형식]
+최종 답변은 반드시 아래 세 가지 중 하나의 JSON 오브젝트 "하나만" 출력한다. JSON 외의 설명 텍스트는 최종 답변에 포함하지 않는다.
+
+1) 조건 확인 질문이 필요할 때:
+{"action":"ask","message":"<질문 한 개, 존댓말>","options":["<짧은 선택지>", ...]}
+- options는 2~4개. 예: ["폼롤러 있어요","없어요"]
+
+2) 플랜 완성:
+{"action":"plan","message":"<플랜에 대한 한두 문장 코멘트, 존댓말>","plan":{"title":"<플랜 이름>","summary":"<한 줄 설명>","total_min":<숫자>,"items":[...],"cautions":["<주의사항>", ...],"sources":[{"title":"<출처 이름>","url":"<URL>"}, ...]}}
+items의 각 원소는 두 형태 중 하나:
+- DB 동작: {"id":"<DB의 id>","sets":<숫자>,"dur_sec":<숫자, dur형 동작만> 또는 "reps":<숫자, reps형 동작만>,"note":"<선택: 짧은 팁>"}
+- DB 외 제안: {"custom":true,"name":"<동작 이름>","how":"<1~2문장 수행 방법>","dur_sec":<숫자> 또는 "reps":<숫자>,"sets":<숫자>,"side":true|false,"note":"<선택>","source_url":"<근거 출처 URL, 검색했을 때만>","video_url":"<YouTube 영상 URL, 검색으로 확인했을 때만>"}
+- plan.sources는 웹 검색을 사용했을 때만 포함하고, 실제로 참고한 출처만 넣는다.
+
+3) 위험 신호가 있을 때:
+{"action":"stop","message":"<스트레칭을 권하지 않는 이유와 전문가 상담 권고, 존댓말>"}
+
+[웹 검색 규칙]
+- 기본 DB로 충분한 일반적인 요청(목/어깨/허리/하체 뻐근함 등)에는 검색하지 않는다.
+- 다음의 경우에만 web_search를 사용한다: DB에 마땅한 동작이 없는 특수 부위/종목(예: 클라이밍 손가락, 골프 스윙, 수영 어깨), 특수 상황(임산부, 고령자, 재활 단계), 사용자가 근거나 영상을 요청할 때.
+- 검색 시 신뢰할 수 있는 출처(의료기관, 물리치료/스포츠의학 자료)를 우선하고, custom 동작에는 source_url을, 영상을 찾았으면 video_url(YouTube)을 포함한다.
+- 검색은 필요한 최소한으로. 검색 결과가 불충분하면 무리하게 custom을 만들지 말고 DB 동작으로 구성한다.
+
+[규칙]
+- 질문(ask)은 플랜이 실제로 갈리는 조건일 때만 한다: 도구 보유 여부, 눕거나 엎드릴 공간 여부, 통증의 성격. 한 번에 질문 1개, 대화 전체에서 최대 2번. 합리적 기본값(맨몸, 실내, 초급)으로 충분히 좋은 플랜이 가능하면 질문 없이 바로 플랜을 낸다.
+- eq(도구)가 필요한 동작은 사용자가 보유/사용 가능을 확인해준 경우에만 넣는다. 확인되지 않았으면 맨몸 대안을 쓴다. "(선택)"이 붙은 도구는 없어도 되는 동작이다.
+- DB 외 제안(custom)은 플랜당 최대 2개. 널리 알려지고 검증된 안전한 동작만.
+- 위험 신호: 팔다리 저림이나 방사통, 최근 수술/골절/부상, 급성으로 심한 통증, 어지럼증이 언급되면 action "stop"으로 병원/전문가 상담을 권한다. 단순한 뻐근함, 결림, 운동 후 근육통은 정상 진행하되 관련 주의를 cautions에 담는다.
+- 시간: 사용자가 말한 시간에 맞춘다(오차 ±2분). 동작 전환 시간을 동작당 약 15초로 계산에 포함한다. side=true 동작은 좌우 각각이므로 시간이 2배임을 잊지 말 것.
+- items의 id는 반드시 DB에 있는 id만 사용한다(custom 제안 제외).
+- 구성 원칙: 호소 부위를 겨냥한 동작 위주로 하되, 정적 스트레칭 전에 가벼운 동적/이완 동작 1개로 시작하면 좋다. 운동 전 요청이면 동적 위주, 운동 후/자기 전이면 정적·이완 위주.
+- 사용자가 완성된 플랜의 수정을 요청하면 수정된 "전체 플랜"을 다시 action "plan"으로 출력한다.
+- 모든 문장은 한국어 존댓말. message는 간결하게.`;
+
+const MODELS = {
+  fast: { id: "claude-haiku-4-5", search: "web_search_20250305", maxTokens: 4000 },
+  smart: { id: "claude-opus-5", search: "web_search_20260209", maxTokens: 12000 },
+};
+
+/* ---------------- 상태 ---------------- */
+const state = {
+  apiKey: null,
+  tier: "smart",
+  turns: [],
+  askCount: 0,
+  busy: false,
+  ctl: null,
+  lastSources: [],
+};
+
+const $ = (id) => document.getElementById(id);
+const chatEl = $("chat");
+const inputEl = $("input");
+const sendBtn = $("sendBtn");
+
+/* ---------------- 채팅 렌더링 ---------------- */
+function scrollBottom() {
+  requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight));
+}
+
+function addBubble(role, text) {
+  const wrap = document.createElement("div");
+  wrap.className = "msg " + (role === "user" ? "user" : "ai");
+  const b = document.createElement("div");
+  b.className = "bubble";
+  b.textContent = text;
+  wrap.appendChild(b);
+  chatEl.appendChild(wrap);
+  scrollBottom();
+  return b;
+}
+
+function addThinking() {
+  const wrap = document.createElement("div");
+  wrap.className = "msg ai";
+  const b = document.createElement("div");
+  b.className = "bubble thinking";
+  b.innerHTML = '<span id="thinkLabel">몸 상태를 살펴보는 중</span><span class="dots"></span>';
+  wrap.appendChild(b);
+  chatEl.appendChild(wrap);
+  scrollBottom();
+  return { el: wrap, setLabel(t) { const l = $("thinkLabel"); if (l) l.textContent = t; } };
+}
+
+function addNotice(text, danger) {
+  const n = document.createElement("div");
+  n.className = "notice" + (danger ? " danger" : "");
+  n.textContent = text;
+  chatEl.appendChild(n);
+  scrollBottom();
+  return n;
+}
+
+function addQuickReplies(options) {
+  const q = document.createElement("div");
+  q.className = "quick";
+  options.slice(0, 4).forEach(opt => {
+    const btn = document.createElement("button");
+    btn.textContent = String(opt);
+    btn.addEventListener("click", () => {
+      q.remove();
+      send(String(opt));
+    });
+    q.appendChild(btn);
+  });
+  chatEl.appendChild(q);
+  scrollBottom();
+}
+
+function addRetry(label) {
+  const q = document.createElement("div");
+  q.className = "quick";
+  const btn = document.createElement("button");
+  btn.textContent = label || "다시 시도";
+  btn.addEventListener("click", () => { q.remove(); runModel(); });
+  q.appendChild(btn);
+  chatEl.appendChild(q);
+  scrollBottom();
+}
+
+/* ---------------- 플랜 카드 ---------------- */
+function resolveItem(it) {
+  if (it && it.custom === true && it.name) {
+    return {
+      id: null, name: String(it.name), how: String(it.how || ""),
+      pos: null, eq: null, kind: "AI 제안", side: !!it.side,
+      dur: it.dur_sec ?? null, reps: it.reps ?? null, sets: it.sets ?? 1,
+      custom: true, sourceUrl: it.source_url || null, videoUrl: it.video_url || null,
+    };
+  }
+  return DB.find(e => e.id === it.id) || null;
+}
+
+function fmtDose(item, ex) {
+  const parts = [];
+  if (item.reps ?? ex.reps) parts.push(`${item.reps ?? ex.reps}회`);
+  else parts.push(`${item.dur_sec ?? ex.dur ?? 30}초`);
+  const sets = item.sets ?? ex.sets ?? 1;
+  if (sets > 1) parts.push(`${sets}세트`);
+  let s = parts.join(" × ");
+  if (ex.side) s += " · 좌우 각각";
+  return s;
+}
+
+function videoSearchUrl(name) {
+  return "https://www.youtube.com/results?search_query=" +
+    encodeURIComponent(name.replace(/\s*\(.*\)\s*/, "") + " 스트레칭 방법");
+}
+
+function youtubeEmbedId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("/")[0];
+    if (u.hostname.includes("youtube.com")) {
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2];
+      if (u.searchParams.get("v")) return u.searchParams.get("v");
+    }
+  } catch (_) { /* URL 파싱 실패는 무시 */ }
+  return null;
+}
+
+function safeHttpUrl(url) {
+  try {
+    const u = new URL(url);
+    return (u.protocol === "https:" || u.protocol === "http:") ? u.href : null;
+  } catch (_) { return null; }
+}
+
+function renderPlan(plan, sources) {
+  const card = document.createElement("div");
+  card.className = "msg ai";
+  const inner = document.createElement("div");
+  inner.className = "plan-card";
+
+  const items = (plan.items || []).map(it => ({ it, ex: resolveItem(it) }))
+    .filter(x => x.ex);
+  const hasCustom = items.some(x => x.ex.custom);
+
+  const head = document.createElement("div");
+  head.className = "plan-head";
+  const headL = document.createElement("div");
+  const h2 = document.createElement("h2");
+  h2.textContent = plan.title || "스트레칭 플랜";
+  const sum = document.createElement("p");
+  sum.className = "summary";
+  sum.textContent = plan.summary || "";
+  headL.append(h2, sum);
+  const time = document.createElement("div");
+  time.className = "plan-time";
+  time.innerHTML = `<div class="num">${Number(plan.total_min) || "?"}</div><div class="unit">분</div>`;
+  head.append(headL, time);
+  inner.appendChild(head);
+
+  const ol = document.createElement("ol");
+  ol.className = "plan-items";
+  items.forEach(({ it, ex }, i) => {
+    const li = document.createElement("li");
+
+    const fig = document.createElement("div");
+    fig.className = "step-fig";
+    const canvas = document.createElement("canvas");
+    fig.appendChild(canvas);
+    const no = document.createElement("span");
+    no.className = "no";
+    no.textContent = i + 1;
+    fig.appendChild(no);
+    attachAnim(canvas, ex.id);
+
+    const body = document.createElement("div");
+    body.className = "step-body";
+
+    const title = document.createElement("div");
+    title.className = "step-title";
+    title.textContent = ex.name + " ";
+    const dose = document.createElement("span");
+    dose.className = "step-dose";
+    dose.textContent = fmtDose(it, ex);
+    title.appendChild(dose);
+
+    const how = document.createElement("p");
+    how.className = "step-how";
+    how.textContent = ex.how;
+
+    body.append(title, how);
+    if (it.note) {
+      const note = document.createElement("p");
+      note.className = "step-note";
+      note.textContent = String(it.note);
+      body.appendChild(note);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "step-meta";
+    if (ex.custom) {
+      const c = document.createElement("span");
+      c.className = "meta-chip ai";
+      c.textContent = "AI 제안 · 기본 DB 외";
+      meta.appendChild(c);
+    }
+    [ex.pos, ex.eq ? "도구: " + ex.eq : (ex.custom ? null : "맨몸"), ex.custom ? null : ex.kind]
+      .filter(Boolean).forEach(m => {
+        const c = document.createElement("span");
+        c.className = "meta-chip";
+        c.textContent = m;
+        meta.appendChild(c);
+      });
+
+    // AI가 검색으로 찾아온 영상은 페이지 안에 임베드, 없으면 검색 링크
+    const embedId = ex.videoUrl ? youtubeEmbedId(ex.videoUrl) : null;
+    if (embedId) {
+      const vbtn = document.createElement("button");
+      vbtn.className = "video-link";
+      vbtn.textContent = "▶ 영상 보기";
+      let embed = null;
+      vbtn.addEventListener("click", () => {
+        if (embed) {
+          embed.remove();
+          embed = null;
+          vbtn.textContent = "▶ 영상 보기";
+          return;
+        }
+        embed = document.createElement("div");
+        embed.className = "video-embed";
+        const iframe = document.createElement("iframe");
+        iframe.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(embedId);
+        iframe.allow = "accelerometer; encrypted-media; picture-in-picture";
+        iframe.allowFullscreen = true;
+        iframe.title = ex.name + " 영상";
+        embed.appendChild(iframe);
+        body.appendChild(embed);
+        vbtn.textContent = "✕ 영상 닫기";
+        scrollBottom();
+      });
+      meta.appendChild(vbtn);
+    } else {
+      const vid = document.createElement("a");
+      vid.className = "video-link";
+      vid.href = videoSearchUrl(ex.name);
+      vid.target = "_blank";
+      vid.rel = "noopener noreferrer";
+      vid.textContent = "▶ 영상 검색";
+      meta.appendChild(vid);
+    }
+    if (ex.sourceUrl && safeHttpUrl(ex.sourceUrl)) {
+      const src = document.createElement("a");
+      src.className = "src-link";
+      src.href = safeHttpUrl(ex.sourceUrl);
+      src.target = "_blank";
+      src.rel = "noopener noreferrer";
+      src.textContent = "출처";
+      meta.appendChild(src);
+    }
+
+    body.appendChild(meta);
+    li.append(fig, body);
+    ol.appendChild(li);
+  });
+  inner.appendChild(ol);
+
+  const cautions = (plan.cautions || []).concat(
+    items.map(x => x.ex.warn).filter(Boolean)
+  );
+  if (hasCustom) {
+    cautions.push("'AI 제안' 표시가 있는 동작은 검증된 기본 DB 외의 동작입니다. 출처와 영상으로 정확한 자세를 먼저 확인하세요.");
+  }
+  if (cautions.length) {
+    const c = document.createElement("div");
+    c.className = "cautions";
+    const s = document.createElement("strong");
+    s.textContent = "주의사항";
+    const ul = document.createElement("ul");
+    [...new Set(cautions)].forEach(t => {
+      const li = document.createElement("li");
+      li.textContent = String(t);
+      ul.appendChild(li);
+    });
+    c.append(s, ul);
+    inner.appendChild(c);
+  }
+
+  // 참고 자료: 고정 링크 + AI가 명시한 출처 + 웹 검색에서 실제로 조회된 출처
+  const refs = document.createElement("div");
+  refs.className = "refs";
+  const strong = document.createElement("strong");
+  strong.textContent = "참고 자료";
+  refs.appendChild(strong);
+
+  const fixedRefs = [
+    { title: "Mayo Clinic 스트레칭 가이드", url: "https://www.mayoclinic.org/healthy-lifestyle/fitness/in-depth/stretching/art-20047931" },
+    { title: "Harvard Health", url: "https://www.health.harvard.edu/staying-healthy/the-importance-of-stretching" },
+  ];
+  const planSources = Array.isArray(plan.sources) ? plan.sources : [];
+  const searchSources = (sources || []).slice(0, 5);
+  const seen = new Set();
+  const addRef = (title, url, isSearch) => {
+    const safe = safeHttpUrl(url);
+    if (!safe || seen.has(safe)) return;
+    seen.add(safe);
+    const a = document.createElement("a");
+    a.href = safe;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = String(title || safe);
+    if (isSearch) a.className = "search-src";
+    refs.appendChild(a);
+    refs.appendChild(document.createTextNode("  ·  "));
+  };
+  planSources.forEach(s => addRef(s.title, s.url, true));
+  searchSources.forEach(s => addRef(s.title, s.url, true));
+  fixedRefs.forEach(s => addRef(s.title, s.url, false));
+  inner.appendChild(refs);
+
+  const actions = document.createElement("div");
+  actions.className = "plan-actions";
+  const play = document.createElement("button");
+  play.className = "btn-primary";
+  play.textContent = "▶ 따라하기";
+  play.addEventListener("click", () => startPlayer(items));
+  const hint = document.createElement("span");
+  hint.className = "plan-hint";
+  hint.textContent = "바꾸고 싶은 동작이나 시간이 있으면 채팅으로 말해주세요.";
+  actions.append(play, hint);
+  inner.appendChild(actions);
+
+  card.appendChild(inner);
+  chatEl.appendChild(card);
+  scrollBottom();
+}
+
+/* ---------------- Claude API 호출 ---------------- */
+async function callClaude(messages, signal) {
+  const m = MODELS[state.tier];
+  const body = {
+    model: m.id,
+    max_tokens: m.maxTokens,
+    system: SYSTEM_PROMPT,
+    messages,
+    tools: [{ type: m.search, name: "web_search", max_uses: 3 }],
+  };
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": state.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw { http: res.status, type: err?.error?.type, message: err?.error?.message };
+  }
+  return res.json();
+}
+
+function collectSearchSources(content) {
+  const out = [];
+  (content || []).forEach(b => {
+    if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
+      b.content.forEach(r => {
+        if (r.type === "web_search_result" && r.url) out.push({ title: r.title, url: r.url });
+      });
+    }
+  });
+  return out;
+}
+
+function extractJson(content) {
+  const text = (content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end <= start) return null;
+  try { return JSON.parse(text.slice(start, end + 1)); } catch (_) { return null; }
+}
+
+const HTTP_ERROR_COPY = {
+  401: "API 키가 유효하지 않아요. 설정(⚙)에서 키를 확인해주세요.",
+  403: "이 키로는 요청할 수 없어요. 키 권한을 확인해주세요.",
+  429: "요청이 잠시 몰렸어요. 조금 뒤에 다시 시도해주세요.",
+  500: "일시적인 서버 문제가 있었어요.",
+  529: "서비스가 혼잡해요. 잠시 후 다시 시도해주세요.",
+};
+
+async function runModel() {
+  if (!state.apiKey || state.busy) return;
+  setBusy(true);
+  const thinking = addThinking();
+  state.ctl = new AbortController();
+
+  try {
+    // pause_turn(서버 도구가 턴을 이어가야 할 때) 처리 루프
+    const localMessages = [...state.turns];
+    let response = null;
+    let sources = [];
+    for (let i = 0; i < 4; i++) {
+      response = await callClaude(localMessages, state.ctl.signal);
+      sources = sources.concat(collectSearchSources(response.content));
+      if (sources.length) thinking.setLabel("웹에서 근거를 찾는 중");
+      else thinking.setLabel("플랜을 구성하는 중");
+      if (response.stop_reason !== "pause_turn") break;
+      localMessages.push({ role: "assistant", content: response.content });
+    }
+    thinking.el.remove();
+
+    if (response.stop_reason === "refusal") {
+      addNotice("이 요청에는 답변할 수 없어요. 다른 방식으로 말해주시겠어요?", true);
+      return;
+    }
+    if (response.stop_reason === "max_tokens") {
+      addNotice("답변이 너무 길어져 잘렸어요. 요청을 조금 줄여서 다시 시도해주세요.");
+      addRetry("다시 시도");
+      return;
+    }
+
+    const parsed = extractJson(response.content);
+    if (!parsed || !parsed.action) {
+      addNotice("응답 형식을 해석하지 못했어요.");
+      addRetry("다시 시도");
+      return;
+    }
+    state.lastSources = sources;
+    handleReply(parsed, sources);
+  } catch (e) {
+    thinking.el.remove();
+    if (e && e.name === "AbortError") {
+      addNotice("생성을 중지했어요.");
+    } else if (e && e.http) {
+      addNotice(HTTP_ERROR_COPY[e.http] || `요청에 실패했어요. (${e.http}${e.type ? ": " + e.type : ""})`, e.http === 401);
+      if ([429, 500, 529].includes(e.http)) addRetry("다시 시도");
+    } else {
+      addNotice("네트워크 문제로 요청에 실패했어요.");
+      addRetry("다시 시도");
+    }
+  } finally {
+    setBusy(false);
+  }
+}
+
+function handleReply(res, sources) {
+  state.turns.push({ role: "assistant", content: JSON.stringify(res) });
+
+  if (res.action === "ask") {
+    state.askCount++;
+    addBubble("ai", String(res.message || "조건을 하나만 확인할게요."));
+    if (Array.isArray(res.options) && res.options.length) addQuickReplies(res.options);
+  } else if (res.action === "plan" && res.plan) {
+    if (res.message) addBubble("ai", String(res.message));
+    renderPlan(res.plan, sources);
+  } else if (res.action === "stop") {
+    addNotice(String(res.message || "지금 상태에서는 스트레칭보다 전문가 상담을 먼저 권해요."), true);
+  } else {
+    addNotice("응답 형식을 해석하지 못했어요.");
+    addRetry("다시 시도");
+  }
+}
+
+function setBusy(b) {
+  state.busy = b;
+  if (b) {
+    sendBtn.textContent = "중지";
+    sendBtn.classList.add("stop");
+  } else {
+    sendBtn.textContent = "보내기";
+    sendBtn.classList.remove("stop");
+    sendBtn.disabled = !state.apiKey;
+  }
+}
+
+function send(text) {
+  const content = text.trim();
+  if (!content || state.busy || !state.apiKey) return;
+  const intro = $("intro");
+  if (intro) intro.remove();
+
+  addBubble("user", content);
+  let turnContent = content;
+  if (state.askCount >= 2) {
+    turnContent += "\n\n(시스템: 더 이상 질문하지 말고 합리적인 기본값으로 플랜을 완성할 것)";
+  }
+  state.turns.push({ role: "user", content: turnContent });
+  if (state.turns.length > 24) state.turns.splice(0, state.turns.length - 24);
+  inputEl.value = "";
+  autosize();
+  runModel();
+}
+
+/* ---------------- 따라하기 플레이어 ---------------- */
+const player = { queue: [], idx: 0, remain: 0, timer: null, paused: false };
+let playerCanvasReady = false;
+
+function buildQueue(items) {
+  const q = [];
+  items.forEach(({ it, ex }) => {
+    const sets = Math.max(1, Math.min(5, Number(it.sets ?? ex.sets ?? 1)));
+    const sides = ex.side ? ["왼쪽", "오른쪽"] : [null];
+    for (let s = 1; s <= sets; s++) {
+      sides.forEach(side => {
+        const label = [side, sets > 1 ? `${s}/${sets}세트` : null].filter(Boolean).join(" · ");
+        if (it.reps ?? ex.reps) {
+          q.push({ name: ex.name, how: ex.how, exId: ex.id, label, reps: it.reps ?? ex.reps, secs: null });
+        } else {
+          q.push({ name: ex.name, how: ex.how, exId: ex.id, label, secs: Number(it.dur_sec ?? ex.dur) || 30 });
+        }
+      });
+    }
+  });
+  const withRest = [];
+  q.forEach((b, i) => {
+    withRest.push(b);
+    if (i < q.length - 1) withRest.push({ rest: true, secs: 10 });
+  });
+  return withRest;
+}
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    o.start(); o.stop(ctx.currentTime + 0.25);
+  } catch (_) { /* 소리 실패는 무시 */ }
+}
+
+function playerRender() {
+  const b = player.queue[player.idx];
+  if (!b) return endPlayer(true);
+  const activeBlocks = player.queue.filter(x => !x.rest);
+  const blockNo = player.queue.slice(0, player.idx + 1).filter(x => !x.rest).length;
+  const phaseEl = $("playerPhase");
+  const pc = $("playerCanvas");
+
+  if (b.rest) {
+    phaseEl.textContent = "휴식";
+    phaseEl.classList.add("rest");
+    $("playerName").textContent = "잠깐 쉬어가요";
+    $("playerHow").textContent = "호흡을 고르며 다음 동작을 준비하세요.";
+    const rec = animRegistry.get(pc);
+    if (rec) rec.spec = POSES._custom;
+  } else {
+    phaseEl.classList.remove("rest");
+    phaseEl.textContent = `동작 ${blockNo} / ${activeBlocks.length}` + (b.label ? " · " + b.label : "");
+    $("playerName").textContent = b.name;
+    $("playerHow").textContent = b.how;
+    const rec = animRegistry.get(pc);
+    if (rec) rec.spec = POSES[b.exId] || POSES._custom;
+  }
+
+  const clock = $("playerClock");
+  if (b.secs == null) {
+    clock.classList.add("reps");
+    clock.textContent = `${b.reps}회`;
+    $("playerProg").value = 0;
+    $("playerPause").textContent = "완료";
+  } else {
+    clock.classList.remove("reps");
+    clock.textContent = player.remain;
+    $("playerProg").value = ((b.secs - player.remain) / b.secs) * 100;
+    $("playerPause").textContent = player.paused ? "재개" : "일시정지";
+  }
+
+  const next = player.queue.slice(player.idx + 1).find(x => !x.rest);
+  $("playerNext").textContent = next ? "다음: " + next.name : "마지막 동작이에요";
+}
+
+function playerTick() {
+  if (player.paused) return;
+  player.remain--;
+  if (player.remain <= 0) {
+    beep();
+    playerAdvance();
+  } else {
+    playerRender();
+  }
+}
+
+function playerAdvance() {
+  player.idx++;
+  const b = player.queue[player.idx];
+  if (!b) return endPlayer(true);
+  player.remain = b.secs ?? 0;
+  playerRender();
+}
+
+function startPlayer(items) {
+  if (!items.length) return;
+  if (!playerCanvasReady) {
+    attachAnim($("playerCanvas"), "_custom");
+    playerCanvasReady = true;
+  }
+  player.queue = buildQueue(items);
+  player.idx = 0;
+  player.paused = false;
+  const first = player.queue[0];
+  player.remain = first.secs ?? 0;
+  $("player").classList.add("open");
+  document.body.style.overflow = "hidden";
+  playerRender();
+  clearInterval(player.timer);
+  player.timer = setInterval(() => {
+    const b = player.queue[player.idx];
+    if (b && b.secs != null) playerTick();
+  }, 1000);
+}
+
+function endPlayer(done) {
+  clearInterval(player.timer);
+  $("player").classList.remove("open");
+  document.body.style.overflow = "";
+  if (done) addNotice("플랜을 끝까지 완료했어요. 수고하셨습니다! 몸 상태가 어떤지 말해주시면 다음 플랜에 반영할게요.");
+}
+
+$("playerPause").addEventListener("click", () => {
+  const b = player.queue[player.idx];
+  if (!b) return;
+  if (b.secs == null) { beep(); playerAdvance(); return; }
+  player.paused = !player.paused;
+  playerRender();
+});
+$("playerSkip").addEventListener("click", () => { playerAdvance(); });
+$("playerExit").addEventListener("click", () => endPlayer(false));
+
+/* ---------------- 입력/이벤트 ---------------- */
+function autosize() {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+}
+inputEl.addEventListener("input", autosize);
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    if (!state.busy) send(inputEl.value);
+  }
+});
+sendBtn.addEventListener("click", () => {
+  if (state.busy) {
+    state.ctl?.abort();
+  } else {
+    send(inputEl.value);
+  }
+});
+document.querySelectorAll("[data-example]").forEach(btn => {
+  btn.addEventListener("click", () => send(btn.textContent));
+});
+
+function setTier(t) {
+  state.tier = t;
+  $("tierFast").setAttribute("aria-pressed", String(t === "fast"));
+  $("tierSmart").setAttribute("aria-pressed", String(t === "smart"));
+}
+$("tierFast").addEventListener("click", () => setTier("fast"));
+$("tierSmart").addEventListener("click", () => setTier("smart"));
+
+/* ---------------- API 키 관리 ---------------- */
+const KEY_STORAGE = "neuru-api-key";
+
+function setApiKey(key, persist) {
+  state.apiKey = key || null;
+  if (persist && key) localStorage.setItem(KEY_STORAGE, key);
+  if (!persist) localStorage.removeItem(KEY_STORAGE);
+  sendBtn.disabled = !state.apiKey;
+  $("keyPanel").hidden = !!state.apiKey;
+}
+
+$("keySave").addEventListener("click", () => {
+  const key = $("keyInput").value.trim();
+  if (!key) return;
+  setApiKey(key, $("keyPersist").checked);
+  $("keyInput").value = "";
+});
+$("keyInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") $("keySave").click();
+});
+$("settingsBtn").addEventListener("click", () => {
+  const panel = $("keyPanel");
+  panel.hidden = !panel.hidden;
+});
+
+(function init() {
+  const saved = localStorage.getItem(KEY_STORAGE);
+  if (saved) {
+    setApiKey(saved, true);
+  } else {
+    sendBtn.disabled = true;
+    $("keyPanel").hidden = false;
+  }
+})();
+</script>
+</body>
+</html>
